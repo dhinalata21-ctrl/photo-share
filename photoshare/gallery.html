@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Photo Album</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #111;
+    color: #f5f5f5;
+    min-height: 100dvh;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(17, 17, 17, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #2a2a2a;
+    padding: 14px 16px 12px;
+  }
+  header h1 { font-size: 1.1rem; font-weight: 600; }
+  header p { font-size: 0.8rem; color: #999; margin-top: 4px; }
+  #stage { position: relative; width: 100%; }
+  #grid { position: relative; width: 100%; }
+  .thumb {
+    position: absolute;
+    background: #1c1c1c;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    border-radius: 2px;
+  }
+  .thumb img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #1c1c1c;
+  }
+  .thumb .skel {
+    position: absolute;
+    inset: 0;
+    background: #1c1c1c;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .thumb.ready .skel { opacity: 0; }
+  .thumb.error .skel { opacity: 1; background: #2a2222; }
+  .thumb.error::after {
+    content: "↻";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 1.2rem;
+    pointer-events: none;
+  }
+  #loading { text-align: center; padding: 48px 16px; color: #888; }
+  #viewer {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #000;
+    flex-direction: column;
+  }
+  #viewer.open { display: flex; }
+  #viewer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    background: rgba(0,0,0,0.6);
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 2;
+  }
+  #viewer-top span { font-size: 0.85rem; color: #ccc; }
+  #viewer-top button, #viewer-bottom a {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  #viewer-img-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #viewer-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  #viewer-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    background: rgba(0,0,0,0.6);
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 2;
+  }
+  #viewer-bottom button {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+  .nav-zone {
+    position: absolute;
+    top: 60px;
+    bottom: 80px;
+    width: 30%;
+    z-index: 1;
+  }
+  .nav-zone.left { left: 0; }
+  .nav-zone.right { right: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Photo Album</h1>
+  <p id="count">Loading…</p>
+</header>
+<div id="loading">Loading photos…</div>
+<div id="stage" hidden><div id="grid"></div></div>
+<div id="viewer">
+  <div id="viewer-top">
+    <button type="button" id="close-btn">Close</button>
+    <span id="viewer-counter"></span>
+    <a id="download-btn" href="#" download>Save</a>
+  </div>
+  <div class="nav-zone left" id="nav-prev"></div>
+  <div class="nav-zone right" id="nav-next"></div>
+  <div id="viewer-img-wrap"><img id="viewer-img" alt=""></div>
+  <div id="viewer-bottom">
+    <button type="button" id="prev-btn">‹</button>
+    <button type="button" id="next-btn">›</button>
+  </div>
+</div>
+<script>
+const stage = document.getElementById('stage');
+const grid = document.getElementById('grid');
+const loading = document.getElementById('loading');
+const countEl = document.getElementById('count');
+const viewer = document.getElementById('viewer');
+const viewerImg = document.getElementById('viewer-img');
+const viewerCounter = document.getElementById('viewer-counter');
+const downloadBtn = document.getElementById('download-btn');
+
+let photos = [];
+let current = 0;
+let cols = 3;
+let gap = 2;
+let pad = 2;
+let cell = 120;
+let rowH = 122;
+let totalRows = 0;
+let mounted = new Map();
+const MAX_LOADS = 6;
+let loadActive = 0;
+const loadQueue = [];
+
+function encodePath(rel) {
+  return rel.split('/').map(encodeURIComponent).join('/');
+}
+
+function layout() {
+  cols = window.innerWidth >= 600 ? 4 : 3;
+  gap = window.innerWidth >= 600 ? 4 : 2;
+  pad = gap;
+  const inner = window.innerWidth - pad * 2;
+  cell = Math.floor((inner - gap * (cols - 1)) / cols);
+  rowH = cell + gap;
+  totalRows = Math.ceil(photos.length / cols);
+  grid.style.height = (pad * 2 + totalRows * rowH - gap) + 'px';
+}
+
+function thumbUrl(name) { return '/thumb/' + encodePath(name); }
+function fullUrl(name) { return '/photos/' + encodePath(name); }
+
+function enqueueLoad(img, url, onDone) {
+  loadQueue.push({ img, url, onDone, tries: 0 });
+  pumpLoads();
+}
+
+function pumpLoads() {
+  while (loadActive < MAX_LOADS && loadQueue.length) {
+    const job = loadQueue.shift();
+    loadActive++;
+    job.img.onload = () => { loadActive--; job.onDone(true); pumpLoads(); };
+    job.img.onerror = () => {
+      loadActive--;
+      if (job.tries < 2) {
+        job.tries++;
+        setTimeout(() => enqueueLoad(job.img, job.url + '?r=' + job.tries, job.onDone), 400 * job.tries);
+      } else {
+        job.onDone(false);
+      }
+      pumpLoads();
+    };
+    job.img.src = job.url;
+    if (job.img.complete && job.img.naturalWidth > 0) job.img.onload();
+  }
+}
+
+function visibleRange() {
+  const y = window.scrollY;
+  const h = window.innerHeight;
+  const firstRow = Math.max(0, Math.floor((y - pad) / rowH) - 2);
+  const lastRow = Math.min(totalRows - 1, Math.ceil((y + h - pad) / rowH) + 2);
+  return { firstRow, lastRow };
+}
+
+function mountThumb(index) {
+  if (mounted.has(index)) return mounted.get(index);
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  const name = photos[index];
+  const btn = document.createElement('button');
+  btn.className = 'thumb';
+  btn.type = 'button';
+  btn.style.width = cell + 'px';
+  btn.style.height = cell + 'px';
+  btn.style.left = (pad + col * (cell + gap)) + 'px';
+  btn.style.top = (pad + row * rowH) + 'px';
+  const skel = document.createElement('div');
+  skel.className = 'skel';
+  const img = document.createElement('img');
+  img.alt = '';
+  img.decoding = 'async';
+  btn.append(skel, img);
+  btn.addEventListener('click', () => openViewer(index));
+  enqueueLoad(img, thumbUrl(name), (ok) => {
+    if (ok) btn.classList.add('ready');
+    else btn.classList.add('error');
+  });
+  grid.appendChild(btn);
+  mounted.set(index, btn);
+  return btn;
+}
+
+function unmountThumb(index) {
+  const btn = mounted.get(index);
+  if (!btn) return;
+  const img = btn.querySelector('img');
+  if (img) {
+    img.onload = null;
+    img.onerror = null;
+    img.removeAttribute('src');
+  }
+  btn.remove();
+  mounted.delete(index);
+}
+
+function renderVisible() {
+  if (!photos.length) return;
+  const { firstRow, lastRow } = visibleRange();
+  const first = firstRow * cols;
+  const last = Math.min(photos.length - 1, (lastRow + 1) * cols - 1);
+  for (const idx of [...mounted.keys()]) {
+    if (idx < first || idx > last) unmountThumb(idx);
+  }
+  for (let i = first; i <= last; i++) mountThumb(i);
+}
+
+let scrollTimer = null;
+function onScroll() {
+  if (scrollTimer) return;
+  scrollTimer = requestAnimationFrame(() => {
+    scrollTimer = null;
+    renderVisible();
+  });
+}
+
+async function init() {
+  const res = await fetch('/api/photos');
+  photos = await res.json();
+  countEl.textContent = photos.length + ' photos — scroll to browse, tap to open';
+  loading.hidden = true;
+  stage.hidden = false;
+  layout();
+  renderVisible();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', () => {
+    for (const idx of [...mounted.keys()]) unmountThumb(idx);
+    layout();
+    renderVisible();
+  }, { passive: true });
+}
+
+function openViewer(i) {
+  current = i;
+  updateViewer();
+  viewer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeViewer() {
+  viewer.classList.remove('open');
+  document.body.style.overflow = '';
+  viewerImg.removeAttribute('src');
+}
+
+function updateViewer() {
+  const name = photos[current];
+  viewerImg.src = fullUrl(name);
+  viewerCounter.textContent = (current + 1) + ' / ' + photos.length;
+  downloadBtn.href = fullUrl(name);
+  downloadBtn.download = name.split('/').pop();
+}
+
+function goPrev() { if (current > 0) { current--; updateViewer(); } }
+function goNext() { if (current < photos.length - 1) { current++; updateViewer(); } }
+
+document.getElementById('close-btn').addEventListener('click', closeViewer);
+document.getElementById('prev-btn').addEventListener('click', goPrev);
+document.getElementById('next-btn').addEventListener('click', goNext);
+document.getElementById('nav-prev').addEventListener('click', goPrev);
+document.getElementById('nav-next').addEventListener('click', goNext);
+
+let touchStartX = 0;
+viewer.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+viewer.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  if (Math.abs(dx) > 50) { dx < 0 ? goNext() : goPrev(); }
+}, { passive: true });
+
+init();
+</script>
+</body>
+</html>

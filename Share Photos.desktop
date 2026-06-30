@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Share Photos
+Comment=Share photos from a folder or SD card to your phone over Wi-Fi
+Exec="@PROJECT_DIR@/.venv/bin/python" "@PROJECT_DIR@/launch.py"
+Path=@PROJECT_DIR@
+Icon=camera-photo
+Terminal=false
+Categories=Photography;Network;Utility;
+StartupNotify=true
