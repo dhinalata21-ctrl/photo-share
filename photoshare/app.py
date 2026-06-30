@@ -43,7 +43,7 @@ class SharePhotosApp:
         self.page.window.min_width = 760
         self.page.window.min_height = 600
 
-        self.file_picker = ft.FilePicker(on_result=self._on_folder_picked)
+        self.file_picker = ft.FilePicker()
         self.page.overlay.append(self.file_picker)
 
         self.main = ft.Container(expand=True)
@@ -58,6 +58,16 @@ class SharePhotosApp:
             padding=ft.padding.symmetric(horizontal=28, vertical=24),
         )
         self.page.update()
+
+    def _show_snack(self, message: str, bgcolor: str = SURFACE) -> None:
+        self.page.show_dialog(ft.SnackBar(message, bgcolor=bgcolor))
+
+    async def _browse_folder(self) -> None:
+        path = await self.file_picker.get_directory_path(
+            dialog_title="Choose your photo folder"
+        )
+        if path:
+            self._pick_folder(Path(path))
 
     def show_home(self) -> None:
         self._set_view(self._build_home())
@@ -225,9 +235,7 @@ class SharePhotosApp:
                                     padding=ft.padding.symmetric(horizontal=22, vertical=16),
                                     shape=ft.RoundedRectangleBorder(radius=12),
                                 ),
-                                on_click=lambda _: self.file_picker.get_directory_path(
-                                    dialog_title="Choose your photo folder"
-                                ),
+                                on_click=lambda _: self.page.run_task(self._browse_folder),
                             ),
                             ft.OutlinedButton(
                                 "Refresh SD cards",
@@ -499,11 +507,7 @@ class SharePhotosApp:
             except OSError as exc:
 
                 async def show_error() -> None:
-                    self.page.snack_bar = ft.SnackBar(
-                        ft.Text(f"Could not read folder: {exc}"),
-                        bgcolor="#5c1d1d",
-                    )
-                    self.page.snack_bar.open = True
+                    self._show_snack(f"Could not read folder: {exc}", "#5c1d1d")
                     self.show_home()
 
                 self.page.run_task(show_error)
@@ -511,11 +515,7 @@ class SharePhotosApp:
 
             async def show_result() -> None:
                 if preview.photo_count == 0:
-                    self.page.snack_bar = ft.SnackBar(
-                        ft.Text("No photos found in that folder."),
-                        bgcolor="#5c1d1d",
-                    )
-                    self.page.snack_bar.open = True
+                    self._show_snack("No photos found in that folder.", "#5c1d1d")
                     self.show_home()
                     return
                 self.show_preview(preview)
@@ -523,10 +523,6 @@ class SharePhotosApp:
             self.page.run_task(show_result)
 
         self.page.run_thread(worker)
-
-    def _on_folder_picked(self, event: ft.FilePickerResultEvent) -> None:
-        if event.path:
-            self._pick_folder(Path(event.path))
 
     def _start_sharing(self) -> None:
         if not self.preview:
@@ -536,8 +532,7 @@ class SharePhotosApp:
         try:
             self.server.start()
         except OSError as exc:
-            self.page.snack_bar = ft.SnackBar(ft.Text(f"Could not start: {exc}"), bgcolor="#5c1d1d")
-            self.page.snack_bar.open = True
+            self._show_snack(f"Could not start: {exc}", "#5c1d1d")
             self.page.update()
             return
         link = f"http://{get_local_ip()}:{DEFAULT_PORT}"
@@ -545,8 +540,7 @@ class SharePhotosApp:
 
     def _stop_sharing(self) -> None:
         self.server.stop()
-        self.page.snack_bar = ft.SnackBar(ft.Text("Sharing stopped"), bgcolor=SURFACE)
-        self.page.snack_bar.open = True
+        self._show_snack("Sharing stopped")
         self.show_home()
 
     def _stop_and_home(self) -> None:
@@ -555,8 +549,7 @@ class SharePhotosApp:
 
     def _copy_link(self, link: str) -> None:
         self.page.set_clipboard(link)
-        self.page.snack_bar = ft.SnackBar(ft.Text("Link copied!"), bgcolor=SUCCESS)
-        self.page.snack_bar.open = True
+        self._show_snack("Link copied!", SUCCESS)
         self.page.update()
 
 
@@ -569,7 +562,7 @@ def main() -> None:
 
         page.on_close = on_close
 
-    ft.app(target=run)
+    ft.run(run)
 
 
 if __name__ == "__main__":
