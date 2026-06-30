@@ -9,6 +9,7 @@ from pathlib import Path
 import flet as ft
 import qrcode
 
+from photoshare.auth import generate_pin
 from photoshare.drives import find_photo_sources
 from photoshare.network import get_local_ip
 from photoshare.preview import FolderPreview, build_folder_preview
@@ -33,6 +34,8 @@ class SharePhotosApp:
         self.server = PhotoServer(Path.home(), port=DEFAULT_PORT)
         self.preview: FolderPreview | None = None
         self.share_link = ""
+        self.pin_switch: ft.Switch | None = None
+        self.pin_field: ft.TextField | None = None
 
         self.page.title = "Share Photos"
         self.page.theme_mode = ft.ThemeMode.DARK
@@ -88,9 +91,9 @@ class SharePhotosApp:
         self.preview = preview
         self._set_view(self._build_preview(preview))
 
-    def show_sharing(self, link: str) -> None:
-        self.share_link = link
-        self._set_view(self._build_sharing(link))
+    def show_sharing(self, public_link: str, qr_link: str, pin: str | None) -> None:
+        self.share_link = public_link
+        self._set_view(self._build_sharing(public_link, qr_link, pin))
 
     def _header(self, title: str, subtitle: str) -> ft.Column:
         return ft.Column(
@@ -349,6 +352,7 @@ class SharePhotosApp:
                     spacing=10,
                     run_spacing=10,
                 ),
+                self._build_pin_options(),
                 ft.Row(
                     [
                         ft.OutlinedButton(
@@ -380,6 +384,44 @@ class SharePhotosApp:
             expand=True,
         )
 
+    def _build_pin_options(self) -> ft.Container:
+        self.pin_switch = ft.Switch(
+            label="Protect pasted link with PIN",
+            value=True,
+            active_color=ACCENT,
+            on_change=lambda _: self._update_pin_visibility(),
+        )
+        self.pin_field = ft.TextField(
+            label="PIN or phrase",
+            value=generate_pin(),
+            password=True,
+            can_reveal_password=True,
+            width=360,
+        )
+        return ft.Container(
+            content=ft.Column(
+                [
+                    self.pin_switch,
+                    self.pin_field,
+                    ft.Text(
+                        "QR scan opens instantly. Anyone with the pasted link must enter this PIN.",
+                        size=12,
+                        color=TEXT_DIM,
+                    ),
+                ],
+                spacing=10,
+            ),
+            padding=16,
+            bgcolor=SURFACE,
+            border_radius=14,
+            border=ft.Border.all(1, BORDER),
+        )
+
+    def _update_pin_visibility(self) -> None:
+        if self.pin_field and self.pin_switch:
+            self.pin_field.visible = self.pin_switch.value
+            self.page.update()
+
     def _qr_base64(self, url: str) -> str:
         qr = qrcode.QRCode(box_size=6, border=2)
         qr.add_data(url)
@@ -389,14 +431,37 @@ class SharePhotosApp:
         img.save(buf, format="PNG")
         return base64.b64encode(buf.getvalue()).decode("ascii")
 
-    def _build_sharing(self, link: str) -> ft.Column:
-        qr_b64 = self._qr_base64(link)
+    def _build_sharing(self, public_link: str, qr_link: str, pin: str | None) -> ft.Column:
+        qr_b64 = self._qr_base64(qr_link)
         count = self.preview.photo_count if self.preview else 0
         folder_name = self.preview.folder.name if self.preview else "photos"
+        pin_row: list[ft.Control] = []
+        if pin:
+            pin_row = [
+                ft.Container(height=6),
+                ft.Row(
+                    [
+                        ft.Icon(ft.Icons.LOCK_OUTLINE, size=18, color=ACCENT),
+                        ft.Text(
+                            f"PIN for pasted link: {pin}",
+                            size=15,
+                            color=TEXT,
+                            weight=ft.FontWeight.W_600,
+                            selectable=True,
+                        ),
+                    ],
+                    spacing=8,
+                ),
+                ft.Text(
+                    "Share this PIN separately with anyone using the copied link.",
+                    size=12,
+                    color=TEXT_DIM,
+                ),
+            ]
 
         return ft.Column(
             [
-                self._header("You're live!", "Open the link or scan the code on your phone"),
+                self._header("You're live!", "Scan QR for instant access — pasted links need PIN"),
                 self._step_row(3),
                 ft.Container(
                     content=ft.Row(
@@ -416,7 +481,9 @@ class SharePhotosApp:
                                         ft.Text(folder_name, size=22, weight=ft.FontWeight.BOLD, color=TEXT),
                                         ft.Text(f"{count} photos available on your phone", size=14, color=TEXT_DIM),
                                         ft.Container(height=8),
-                                        ft.Text(link, size=18, color=ACCENT, weight=ft.FontWeight.W_600, selectable=True),
+                                        ft.Text("Pasted link", size=12, color=TEXT_DIM),
+                                        ft.Text(public_link, size=17, color=ACCENT, weight=ft.FontWeight.W_600, selectable=True),
+                                        *pin_row,
                                         ft.Container(height=8),
                                         ft.Row(
                                             [
@@ -425,7 +492,7 @@ class SharePhotosApp:
                                                     icon=ft.Icons.CONTENT_COPY,
                                                     bgcolor=ACCENT,
                                                     color=BG,
-                                                    on_click=lambda _: self._copy_link(link),
+                                                    on_click=lambda _: self._copy_link(public_link),
                                                 ),
                                                 ft.OutlinedButton(
                                                     "Stop sharing",
@@ -437,7 +504,7 @@ class SharePhotosApp:
                                             spacing=10,
                                         ),
                                         ft.Text(
-                                            "On your phone: same Wi-Fi → open browser → paste link or scan QR",
+                                            "Same Wi-Fi → scan QR (no PIN) or paste link (PIN required)",
                                             size=12,
                                             color=TEXT_DIM,
                                         ),
@@ -451,7 +518,7 @@ class SharePhotosApp:
                                 content=ft.Column(
                                     [
                                         ft.Image(src=f"data:image/png;base64,{qr_b64}", width=180, height=180),
-                                        ft.Text("Scan with phone camera", size=12, color=TEXT_DIM),
+                                        ft.Text("Scan QR — opens instantly", size=12, color=TEXT_DIM),
                                     ],
                                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                                     spacing=8,
@@ -474,7 +541,7 @@ class SharePhotosApp:
                         [
                             ft.Icon(ft.Icons.PHOTO_LIBRARY_OUTLINED, color=ACCENT, size=20),
                             ft.Text(
-                                "Your sister can scroll the album, tap to zoom, and save photos to her phone.",
+                                "Scroll the album on your phone, tap to zoom, and save photos.",
                                 size=13,
                                 color=TEXT_DIM,
                                 expand=True,
@@ -524,16 +591,26 @@ class SharePhotosApp:
     def _start_sharing(self) -> None:
         if not self.preview:
             return
+
+        pin: str | None = None
+        if self.pin_switch and self.pin_switch.value:
+            pin = (self.pin_field.value if self.pin_field else "").strip()
+            if not pin:
+                self._show_snack("Enter a PIN or turn off link protection", "#5c1d1d")
+                return
+
         self.server.stop()
-        self.server = PhotoServer(self.preview.folder, port=DEFAULT_PORT)
+        self.server = PhotoServer(self.preview.folder, port=DEFAULT_PORT, pin=pin)
         try:
             self.server.start()
         except OSError as exc:
             self._show_snack(f"Could not start: {exc}", "#5c1d1d")
             self.page.update()
             return
-        link = f"http://{get_local_ip()}:{DEFAULT_PORT}"
-        self.show_sharing(link)
+        ip = get_local_ip()
+        public_link = f"http://{ip}:{DEFAULT_PORT}"
+        qr_link = f"http://{ip}:{DEFAULT_PORT}{self.server.qr_path()}"
+        self.show_sharing(public_link, qr_link, pin)
 
     def _stop_sharing(self) -> None:
         self.server.stop()
