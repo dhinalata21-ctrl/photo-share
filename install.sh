@@ -6,6 +6,17 @@ cd "$PROJECT_DIR"
 
 echo "Installing Share Photos..."
 
+if ! python3 -c "import tkinter" 2>/dev/null; then
+  echo "tkinter is required for the app window."
+  if command -v apt-get >/dev/null 2>&1; then
+    echo "Installing python3-tk..."
+    sudo apt-get install -y python3-tk
+  else
+    echo "Please install tkinter for Python 3, then run this script again."
+    exit 1
+  fi
+fi
+
 if [ ! -d ".venv" ]; then
   python3 -m venv .venv
 fi
