@@ -9,7 +9,7 @@ A desktop app for photographers on **Lubuntu**, **Ubuntu**, and other Linux desk
 ## Who is this for?
 
 - **Photographers** who shoot to SD card and want to review or send photos to a phone quickly
-- **Anyone** tired of Telegram failing on large Linux uploads (500+ full-size JPEGs/RAWs)
+- **Anyone** tired of  failing on large Linux uploads (500+ full-size JPEGs/RAWs)
 - **Linux users** who want a simple double-click app — not a terminal workflow
 
 ## The problem it solves
@@ -98,14 +98,7 @@ This app is designed for **trusted home Wi-Fi**, not the public internet.
 
 ---
 
-## Why not Telegram?
-
-| Telegram upload | Share Photos |
-|----------------|--------------|
-| Uploads every file through the cloud | Serves files locally over Wi-Fi |
-| Often fails on Linux with large batches | Handles thousands of photos |
-| Compresses / limits in some cases | Full original files |
-| Needs internet | Works offline on LAN |
+##  | Works offline on LAN |
 
 ---
 
