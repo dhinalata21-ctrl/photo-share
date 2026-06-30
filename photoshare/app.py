@@ -55,7 +55,7 @@ class SharePhotosApp:
             content=content,
             expand=True,
             bgcolor=BG,
-            padding=ft.padding.symmetric(horizontal=28, vertical=24),
+            padding=ft.Padding.symmetric(horizontal=28, vertical=24),
         )
         self.page.update()
 
@@ -106,7 +106,7 @@ class SharePhotosApp:
                             width=42,
                             height=42,
                             border_radius=12,
-                            alignment=ft.alignment.center,
+                            alignment=ft.Alignment.CENTER,
                         ),
                         ft.Column(
                             [
@@ -139,8 +139,8 @@ class SharePhotosApp:
                             height=28,
                             border_radius=14,
                             bgcolor=dot_color if (done or current) else SURFACE,
-                            border=ft.border.all(2, dot_color),
-                            alignment=ft.alignment.center,
+                            border=ft.Border.all(2, dot_color),
+                            alignment=ft.Alignment.CENTER,
                             content=ft.Icon(
                                 ft.Icons.CHECK if done else None,
                                 size=14,
@@ -174,7 +174,7 @@ class SharePhotosApp:
                                 width=56,
                                 height=56,
                                 border_radius=14,
-                                alignment=ft.alignment.center,
+                                alignment=ft.Alignment.CENTER,
                             ),
                             ft.Column(
                                 [
@@ -191,7 +191,7 @@ class SharePhotosApp:
                     ),
                     padding=18,
                     bgcolor=SURFACE,
-                    border=ft.border.all(1, BORDER),
+                    border=ft.Border.all(1, BORDER),
                     border_radius=16,
                     ink=True,
                     on_click=lambda e, p=source.path: self._pick_folder(p),
@@ -213,8 +213,8 @@ class SharePhotosApp:
                     padding=28,
                     bgcolor=SURFACE,
                     border_radius=16,
-                    border=ft.border.all(1, BORDER),
-                    alignment=ft.alignment.center,
+                    border=ft.Border.all(1, BORDER),
+                    alignment=ft.Alignment.CENTER,
                 )
             )
 
@@ -232,7 +232,7 @@ class SharePhotosApp:
                                 bgcolor=ACCENT,
                                 color=BG,
                                 style=ft.ButtonStyle(
-                                    padding=ft.padding.symmetric(horizontal=22, vertical=16),
+                                    padding=ft.Padding.symmetric(horizontal=22, vertical=16),
                                     shape=ft.RoundedRectangleBorder(radius=12),
                                 ),
                                 on_click=lambda _: self.page.run_task(self._browse_folder),
@@ -242,7 +242,7 @@ class SharePhotosApp:
                                 icon=ft.Icons.REFRESH,
                                 style=ft.ButtonStyle(
                                     color=TEXT,
-                                    padding=ft.padding.symmetric(horizontal=18, vertical=16),
+                                    padding=ft.Padding.symmetric(horizontal=18, vertical=16),
                                     shape=ft.RoundedRectangleBorder(radius=12),
                                 ),
                                 on_click=lambda _: self.show_home(),
@@ -261,7 +261,7 @@ class SharePhotosApp:
                         ],
                         spacing=8,
                     ),
-                    padding=ft.padding.only(top=8),
+                    padding=ft.Padding.only(top=8),
                 ),
             ],
             spacing=14,
@@ -273,8 +273,8 @@ class SharePhotosApp:
         for idx, thumb in enumerate(preview.thumbnails_b64):
             if thumb:
                 image = ft.Image(
-                    src_base64=thumb,
-                    fit=ft.ImageFit.COVER,
+                    src=f"data:image/jpeg;base64,{thumb}",
+                    fit=ft.BoxFit.COVER,
                     gapless_playback=True,
                 )
             else:
@@ -298,7 +298,7 @@ class SharePhotosApp:
                                     overflow=ft.TextOverflow.ELLIPSIS,
                                 ),
                                 bgcolor="#000000aa",
-                                padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                                padding=ft.Padding.symmetric(horizontal=6, vertical=4),
                                 bottom=0,
                                 left=0,
                                 right=0,
@@ -309,7 +309,7 @@ class SharePhotosApp:
                     border_radius=10,
                     clip_behavior=ft.ClipBehavior.HARD_EDGE,
                     aspect_ratio=1,
-                    border=ft.border.all(1, BORDER),
+                    border=ft.Border.all(1, BORDER),
                 )
             )
 
@@ -336,7 +336,7 @@ class SharePhotosApp:
                     padding=16,
                     bgcolor=SURFACE,
                     border_radius=14,
-                    border=ft.border.all(1, BORDER),
+                    border=ft.Border.all(1, BORDER),
                 ),
                 ft.Text(
                     f"Showing {len(tiles)} of {preview.photo_count}"
@@ -359,7 +359,7 @@ class SharePhotosApp:
                             icon=ft.Icons.ARROW_BACK,
                             style=ft.ButtonStyle(
                                 color=TEXT,
-                                padding=ft.padding.symmetric(horizontal=18, vertical=16),
+                                padding=ft.Padding.symmetric(horizontal=18, vertical=16),
                                 shape=ft.RoundedRectangleBorder(radius=12),
                             ),
                             on_click=lambda _: self.show_home(),
@@ -370,7 +370,7 @@ class SharePhotosApp:
                             bgcolor=SUCCESS,
                             color=BG,
                             style=ft.ButtonStyle(
-                                padding=ft.padding.symmetric(horizontal=22, vertical=16),
+                                padding=ft.Padding.symmetric(horizontal=22, vertical=16),
                                 shape=ft.RoundedRectangleBorder(radius=12),
                             ),
                             on_click=lambda _: self._start_sharing(),
@@ -453,7 +453,7 @@ class SharePhotosApp:
                             ft.Container(
                                 content=ft.Column(
                                     [
-                                        ft.Image(src_base64=qr_b64, width=180, height=180),
+                                        ft.Image(src=f"data:image/png;base64,{qr_b64}", width=180, height=180),
                                         ft.Text("Scan with phone camera", size=12, color=TEXT_DIM),
                                     ],
                                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -469,7 +469,7 @@ class SharePhotosApp:
                     ),
                     bgcolor=SURFACE,
                     border_radius=18,
-                    border=ft.border.all(1, BORDER),
+                    border=ft.Border.all(1, BORDER),
                     padding=8,
                 ),
                 ft.Container(
@@ -485,7 +485,7 @@ class SharePhotosApp:
                         ],
                         spacing=10,
                     ),
-                    padding=ft.padding.symmetric(horizontal=8),
+                    padding=ft.Padding.symmetric(horizontal=8),
                 ),
                 ft.OutlinedButton(
                     "Share a different folder",
