@@ -6,6 +6,11 @@ cd "$PROJECT_DIR"
 
 echo "Installing Share Photos..."
 
+if command -v apt-get >/dev/null 2>&1 && ! command -v zenity >/dev/null 2>&1; then
+  echo "Installing zenity (needed for folder picker on Linux)..."
+  sudo apt-get install -y zenity
+fi
+
 if [ ! -d ".venv" ]; then
   python3 -m venv .venv
 fi

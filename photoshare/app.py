@@ -43,9 +43,6 @@ class SharePhotosApp:
         self.page.window.min_width = 760
         self.page.window.min_height = 600
 
-        self.file_picker = ft.FilePicker()
-        self.page.overlay.append(self.file_picker)
-
         self.main = ft.Container(expand=True)
         self.page.add(self.main)
         self.show_home()
@@ -63,7 +60,7 @@ class SharePhotosApp:
         self.page.show_dialog(ft.SnackBar(message, bgcolor=bgcolor))
 
     async def _browse_folder(self) -> None:
-        path = await self.file_picker.get_directory_path(
+        path = await ft.FilePicker().get_directory_path(
             dialog_title="Choose your photo folder"
         )
         if path:
