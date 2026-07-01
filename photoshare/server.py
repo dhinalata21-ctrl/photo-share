@@ -26,11 +26,12 @@ from photoshare.auth import (
     verify_pin,
 )
 from photoshare.drives import is_image_file
+from photoshare.paths import read_asset
 
 THUMB_SIZE = 280
 CACHE_DIR = Path.home() / ".cache" / "photoshare" / "thumbs"
-GALLERY_HTML = (Path(__file__).parent / "gallery.html").read_text(encoding="utf-8")
-PIN_HTML = (Path(__file__).parent / "pin.html").read_text(encoding="utf-8")
+GALLERY_HTML = read_asset("gallery.html")
+PIN_HTML = read_asset("pin.html")
 
 UNLOCK_MAX_FAILURES = 5
 UNLOCK_WINDOW_SEC = 300

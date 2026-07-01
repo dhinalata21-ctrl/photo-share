@@ -13,7 +13,9 @@ rm -rf dist build *.spec
 .venv/bin/flet pack launch.py \
   --name SharePhotos \
   --product-name "Share Photos" \
-  --product-version "${1:-1.0.0}"
+  --product-version "${1:-1.0.0}" \
+  --add-data "photoshare/gallery.html:photoshare" \
+  --add-data "photoshare/pin.html:photoshare"
 
 cp dist/SharePhotos "dist/SharePhotos-linux-x64"
 chmod +x dist/SharePhotos-linux-x64
